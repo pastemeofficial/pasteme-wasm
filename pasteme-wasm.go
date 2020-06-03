@@ -23,6 +23,12 @@ func main() {
 }
 
 func EncryptData(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide some data to encrypt!",
+		})
+	}
+
 	sourceData := args[0].String()
 
 	if len(sourceData) == 0 {
@@ -51,15 +57,25 @@ func EncryptData(this js.Value, args []js.Value) interface{} {
 }
 
 func DecryptData(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a passphrase and encrypted data to decrypt!",
+		})
+	}
+
 	passPhrase := args[0].String()
 	encryptedText := args[1].String()
 
 	if len(passPhrase) == 0 {
-		return ""
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a passphrase!",
+		})
 	}
 
 	if len(encryptedText) == 0 {
-		return ""
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide an encrypted HEX string!",
+		})
 	}
 
 	return js.ValueOf(map[string]interface{}{
