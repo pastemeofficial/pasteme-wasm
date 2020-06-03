@@ -28,10 +28,10 @@ Add the following polyfill for Microsoft Edge 17/18 support:
 
     const go = new Go();
     let mod, inst;
-    WebAssembly.instantiateStreaming(fetch("../build/pasteme.wasm"), go.importObject).then((result) => {
+    WebAssembly.instantiateStreaming(fetch("../build/pasteme.wasm"), go.importObject).then(async result => {
         mod = result.module;
         inst = result.instance;
-        document.getElementById("runButton").disabled = false;
+        await go.run(inst);
     }).catch((err) => {
         console.error(err);
     });

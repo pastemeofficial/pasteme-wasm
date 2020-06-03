@@ -6,12 +6,16 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"golang.org/x/crypto/pbkdf2"
 	"strings"
 	"syscall/js"
 )
 
+const version = "v0.1"
+
 func main() {
+	fmt.Printf("Paste.me WASM module %s initialized\n", version)
 	c := make(chan struct{}, 0)
 	js.Global().Set("pasteme_encrypt", js.FuncOf(EncryptData))
 	js.Global().Set("pasteme_decrypt", js.FuncOf(DecryptData))
