@@ -19,6 +19,14 @@ func main() {
 }
 
 func EncryptData(this js.Value, args []js.Value) interface{} {
+	sourceData := args[0].String()
+
+	if len(sourceData) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide some data to encrypt!",
+		})
+	}
+
 	rb, err := GenerateRandomBytes(28)
 
 	if err != nil {
@@ -30,10 +38,10 @@ func EncryptData(this js.Value, args []js.Value) interface{} {
 	h := sha256.New()
 	h.Write(rb)
 	passPhrase := hex.EncodeToString(h.Sum(nil))
-	encryptText := encrypt(passPhrase, []byte(args[0].String()));
+	encryptText := encrypt(passPhrase, []byte(sourceData))
 
 	return js.ValueOf(map[string]interface{}{
-		"encrypted": encryptText,
+		"encrypted":  encryptText,
 		"passPhrase": passPhrase,
 	})
 }
