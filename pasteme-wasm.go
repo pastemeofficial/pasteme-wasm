@@ -13,8 +13,8 @@ import (
 
 func main() {
 	c := make(chan struct{}, 0)
-	js.Global().Set("encrypt", js.FuncOf(EncryptData))
-	js.Global().Set("decrypt", js.FuncOf(DecryptData))
+	js.Global().Set("pasteme_encrypt", js.FuncOf(EncryptData))
+	js.Global().Set("pasteme_decrypt", js.FuncOf(DecryptData))
 	<-c
 }
 
