@@ -18,12 +18,92 @@ func main() {
 	fmt.Printf("Paste.me WASM module %s initialized\n", version)
 	c := make(chan struct{}, 0)
 	js.Global().Set("pasteme_encrypt", js.FuncOf(EncryptData))
+	js.Global().Set("pasteme_encryptFile", js.FuncOf(EncryptBinaryData))
 	js.Global().Set("pasteme_decrypt", js.FuncOf(DecryptData))
+	js.Global().Set("pasteme_decryptFile", js.FuncOf(DecryptBinaryData))
+	js.Global().Set("pasteme_passphrase", js.FuncOf(GeneratePassPhrase))
 	<-c
 }
 
-func EncryptData(this js.Value, args []js.Value) interface{} {
+func GeneratePassPhrase(this js.Value, args []js.Value) interface{} {
+	rb, err := GenerateRandomBytes(28)
+
+	if err != nil {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Not enough entropy to generate random bytes!",
+		})
+	}
+
+	h := sha256.New()
+	h.Write(rb)
+	passPhrase := hex.EncodeToString(h.Sum(nil))
+
+	return js.ValueOf(map[string]interface{}{
+		"passPhrase": passPhrase,
+	})
+}
+
+func EncryptBinaryData(this js.Value, args []js.Value) interface{} {
+	if len(args) < 2 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide some data to encrypt!",
+		})
+	}
+
+	// sourceData contains 1 file mostly
+	sourceData := args[0]
+
+	fileData := make([]byte, args[0].Length())
+	js.CopyBytesToGo(fileData, sourceData)
+
+	passPhrase := args[1].String()
+
+	if len(passPhrase) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a passphrase!",
+		})
+	}
+
+	encryptText := encrypt(passPhrase, fileData)
+
+	return js.ValueOf(map[string]interface{}{
+		"encrypted": encryptText,
+	})
+}
+
+func DecryptBinaryData(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a passphrase and encrypted data to decrypt!",
+		})
+	}
+
+	passPhrase := args[0].String()
+	encryptedText := args[1].String()
+
+	if len(passPhrase) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a passphrase!",
+		})
+	}
+
+	if len(encryptedText) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide an encrypted HEX string!",
+		})
+	}
+	decryptedFile := decrypt(passPhrase, encryptedText)
+	dst := js.Global().Get("Uint8Array").New(len(decryptedFile))
+
+	js.CopyBytesToJS(dst, decryptedFile)
+
+	return js.ValueOf(map[string]interface{}{
+		"decrypt": dst,
+	})
+}
+
+func EncryptData(this js.Value, args []js.Value) interface{} {
+	if len(args) < 2 {
 		return js.ValueOf(map[string]interface{}{
 			"error": "Please provide some data to encrypt!",
 		})
@@ -37,22 +117,18 @@ func EncryptData(this js.Value, args []js.Value) interface{} {
 		})
 	}
 
-	rb, err := GenerateRandomBytes(28)
+	passPhrase := args[1].String()
 
-	if err != nil {
+	if len(passPhrase) == 0 {
 		return js.ValueOf(map[string]interface{}{
-			"error": "Not enough entropy to generate random bytes!",
+			"error": "Please provide a passphrase!",
 		})
 	}
 
-	h := sha256.New()
-	h.Write(rb)
-	passPhrase := hex.EncodeToString(h.Sum(nil))
 	encryptText := encrypt(passPhrase, []byte(sourceData))
 
 	return js.ValueOf(map[string]interface{}{
-		"encrypted":  encryptText,
-		"passPhrase": passPhrase,
+		"encrypted": encryptText,
 	})
 }
 
@@ -79,7 +155,7 @@ func DecryptData(this js.Value, args []js.Value) interface{} {
 	}
 
 	return js.ValueOf(map[string]interface{}{
-		"decrypt": decrypt(passPhrase, encryptedText),
+		"decrypt": string(decrypt(passPhrase, encryptedText)),
 	})
 }
 
@@ -123,7 +199,7 @@ func encrypt(passphrase string, plaintext []byte) string {
 	return hex.EncodeToString(salt) + "-" + hex.EncodeToString(iv) + "-" + hex.EncodeToString(data)
 }
 
-func decrypt(passphrase, ciphertext string) string {
+func decrypt(passphrase, ciphertext string) []byte {
 	arr := strings.Split(ciphertext, "-")
 	salt, _ := hex.DecodeString(arr[0])
 	iv, _ := hex.DecodeString(arr[1])
@@ -132,5 +208,6 @@ func decrypt(passphrase, ciphertext string) string {
 	b, _ := aes.NewCipher(key)
 	aesgcm, _ := cipher.NewGCM(b)
 	data, _ = aesgcm.Open(nil, iv, data, nil)
-	return string(data)
+
+	return data
 }
