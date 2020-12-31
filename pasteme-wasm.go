@@ -7,12 +7,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/pbkdf2"
 	"strings"
 	"syscall/js"
 )
 
-const version = "v0.1"
+const version = "v0.2"
 
 func main() {
 	fmt.Printf("Paste.me WASM module %s initialized\n", version)
@@ -22,6 +23,8 @@ func main() {
 	js.Global().Set("pasteme_decrypt", js.FuncOf(DecryptData))
 	js.Global().Set("pasteme_decryptFile", js.FuncOf(DecryptBinaryData))
 	js.Global().Set("pasteme_passphrase", js.FuncOf(GeneratePassPhrase))
+	js.Global().Set("pasteme_hashPassword", js.FuncOf(HashPassword))
+	js.Global().Set("pasteme_compareHashAndPassword", js.FuncOf(CompareHashAndPassword))
 	<-c
 }
 
@@ -156,6 +159,71 @@ func DecryptData(this js.Value, args []js.Value) interface{} {
 
 	return js.ValueOf(map[string]interface{}{
 		"decrypt": string(decrypt(passPhrase, encryptedText)),
+	})
+}
+
+func HashPassword(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a password that you need to hash!",
+		})
+	}
+
+	password := args[0].String()
+
+	if len(password) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a password!",
+		})
+	}
+
+	// Hashing the password with the default cost of 10
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return js.ValueOf(map[string]interface{}{
+			"error": "There was an error while hashing the password! Please try again!",
+		})
+	}
+
+	return js.ValueOf(map[string]interface{}{
+		"hashedPassword": string(hashedPassword),
+	})
+}
+
+func CompareHashAndPassword(this js.Value, args []js.Value) interface{} {
+	if len(args) < 2 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a hash and a password to compare!",
+		})
+	}
+
+	hash := args[0].String()
+
+	if len(hash) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a hash!",
+		})
+	}
+
+	password := args[1].String()
+
+	if len(password) == 0 {
+		return js.ValueOf(map[string]interface{}{
+			"error": "Please provide a password!",
+		})
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+
+	if err != nil {
+		return js.ValueOf(map[string]interface{}{
+			"error": "The hash and password do not match!",
+			"valid": false,
+		})
+	}
+
+	return js.ValueOf(map[string]interface{}{
+		"valid": true,
 	})
 }
 
