@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 )
 
-const version = "v0.2"
+const version = "v0.2.1"
 
 func main() {
 	fmt.Printf("Paste.me WASM module %s initialized\n", version)
@@ -227,11 +227,11 @@ func CompareHashAndPassword(this js.Value, args []js.Value) interface{} {
 	})
 }
 
-// @SRC: https://gist.github.com/dopey/c69559607800d2f2f90b1b1ed4e550fb
 // GenerateRandomBytes returns securely generated random bytes.
 // It will return an error if the system's secure random
 // number generator fails to function correctly, in which
 // case the caller should not continue.
+// @SRC: https://gist.github.com/dopey/c69559607800d2f2f90b1b1ed4e550fb
 func GenerateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
